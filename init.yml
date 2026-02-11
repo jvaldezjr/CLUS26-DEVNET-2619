@@ -180,8 +180,10 @@
         body_format: json
         body:
           description: >
-            A new firmware upgrade has been scheduled for testing in the organization
-            {{ test_org_id }}. The upgrade is set for {{ test_upgrade_time }}.
+            A new firmware upgrade has been scheduled for testing in the organization {{ test_org_id }}.<br><br>
+
+            The upgrade is set for {{ test_upgrade_time }}.<br><br>
+
             {{ available_upgrades[0].shortName }} changelog: {{ matching_rss_link }}
           subject: "New Firmware Upgrade Scheduled For Testing"
           email: "jose.valdez@meraki.net"  # Replace with your email address
@@ -206,10 +208,13 @@
           Authorization: "Basic {{ freshdesk_api_key | b64encode }}"
         body_format: json
         body:
-          body: |
-            Pre-Upgrade iperf3 test results:
-            Wired to Wired: from {{ iperf3_tests[0].client_bind }} to {{ iperf3_tests[0].server_bind }}
-            Sent summary: {{ iperf3_wired_to_wired_output.end.sum_sent }}
+          body: >
+            Pre-Upgrade iperf3 test results:<br><br>
+
+            Wired to Wired: from {{ iperf3_tests[0].client_bind }} to {{ iperf3_tests[0].server_bind }}<br><br>
+
+            Sent summary: {{ iperf3_wired_to_wired_output.end.sum_sent }}<br><br>
+
             Received summary: {{ iperf3_wired_to_wired_output.end.sum_received }}
         status_code: 201
       when: iperf3_wired_to_wired_output is defined
