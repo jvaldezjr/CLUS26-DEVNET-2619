@@ -1,4 +1,4 @@
-# CLUS25-DEVNET-2619
+# CLEMEA26-DEVNET-2619
 
 This Ansible playbook check's a test organization and network for available firmware upgrades, compares those available versions against a defined policy for that product type and then schedules a designated test network for upgrade. It also runs pre-upgrade throughput tests and documents the results in a ticket that was created to track the firmware upgrade.
 
