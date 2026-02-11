@@ -29,8 +29,8 @@
   delegate_to: pi5
   become: true
   ansible.builtin.shell: |
-    pkill -f "iperf3"
-  ignore_errors: true
+    pkill iperf3 || true
+  changed_when: false
 
 - name: Set fact for iperf3 wired to wired result (for use in init.yml)
   ansible.builtin.set_fact:
