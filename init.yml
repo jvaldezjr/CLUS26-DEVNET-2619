@@ -7,7 +7,7 @@
     test_org_id: "{{ lookup('env','MERAKI_ORG_ID') }}" # Set this to your test organization ID
     test_product: "wireless"  # Change this to the product you want to test
     test_network_type: "production"  # Change this to the network type you want to test [production, test]
-    test_upgrade_time: "2025-07-07T03:00:00"  # Set this to the desired local time upgrade
+    test_upgrade_time: "{{ '%Y-%m-%dT03:00:00' | strftime((now(fmt='%s') | int) + 2419200) }}"  # 28 days from now (within Meraki "at most 1 month" limit)
     freshdesk_api_key: "{{ lookup('env', 'FRESHDESK_API_KEY') }}"
     freshdesk_domain: "{{ lookup('env', 'FRESHDESK_DOMAIN') }}" # Set this to your Freshdesk domain via env variable
     pi_interfaces:
