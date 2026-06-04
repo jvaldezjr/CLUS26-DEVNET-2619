@@ -1,0 +1,6 @@
+---
+collections:
+  - name: cisco.meraki
+  - name: community.general
+  - name: servicenow.itsm
+    version: ">=2.3.0"

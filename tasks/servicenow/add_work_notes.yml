@@ -1,0 +1,10 @@
+---
+- name: Update change task work notes by sys_id
+  servicenow.itsm.change_request_task:
+    sys_id: "{{ snow_change_task_sys_id }}"
+    other:
+      work_notes: "{{ snow_work_notes }}"
+  environment:
+    SN_HOST: "{{ lookup('env', 'SN_HOST') }}"
+    SN_USERNAME: "{{ lookup('env', 'SN_USERNAME') }}"
+    SN_PASSWORD: "{{ lookup('env', 'SN_PASSWORD') }}"

@@ -1,0 +1,11 @@
+---
+- name: Generate workflow_run_id when not provided
+  ansible.builtin.set_fact:
+    workflow_run_id: "{{ now(utc=true, fmt='%Y%m%dT%H%M%SZ') }}"
+  when: workflow_run_id | default('') | length == 0
+
+- name: Ensure workflow state directory exists
+  ansible.builtin.file:
+    path: "{{ workflow_state_dir }}"
+    state: directory
+    mode: "0700"

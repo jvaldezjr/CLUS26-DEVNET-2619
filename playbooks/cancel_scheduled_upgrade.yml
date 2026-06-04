@@ -1,0 +1,57 @@
+---
+- name: Cancel scheduled Meraki firmware upgrade
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Skip cleanup when disabled
+      ansible.builtin.meta: end_host
+      when: not (run_cleanup | bool)
+
+    - name: Require workflow_run_id
+      ansible.builtin.assert:
+        that:
+          - workflow_run_id | default('') | length > 0
+        fail_msg: workflow_run_id is required
+
+    - name: Load workflow state
+      ansible.builtin.include_tasks: ../tasks/workflow/load_state.yml
+
+    - name: Validate cancel prerequisites
+      ansible.builtin.include_tasks: ../tasks/workflow/assert_state_keys.yml
+      vars:
+        required_state_keys:
+          - test_network_id
+          - test_product
+          - current_version_id
+          - test_upgrade_time
+
+    - name: Refresh firmware info for cancel target
+      cisco.meraki.networks_firmware_upgrades_info:
+        networkId: "{{ test_network_id }}"
+      register: network_firmware_versions
+
+    - name: Cancel scheduled upgrade (revert to current version)
+      cisco.meraki.networks_firmware_upgrades:
+        networkId: "{{ test_network_id }}"
+        products: >-
+          {{
+            dict([
+              (test_product, {
+                'nextUpgrade': {
+                  'time': test_upgrade_time,
+                  'toVersion': {
+                    'id': network_firmware_versions.meraki_response.products[test_product].currentVersion.id
+                  }
+                }
+              })
+            ])
+          }}
+
+    - name: Add cancellation note to change task when present
+      ansible.builtin.include_tasks: ../tasks/servicenow/add_work_notes.yml
+      vars:
+        snow_work_notes: >-
+          Scheduled firmware upgrade cancelled/reverted via automation for
+          {{ test_network_name | default(test_network_id) }}.
+      when: snow_change_task_sys_id | default('') | length > 0

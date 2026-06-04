@@ -1,0 +1,64 @@
+---
+- name: Discover Meraki firmware upgrades
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Initialize workflow run
+      ansible.builtin.include_tasks: ../tasks/workflow/init_run.yml
+
+    - name: Load version policies
+      ansible.builtin.include_vars:
+        file: ../version_policies.yml
+        name: version_policies
+
+    - name: Load release channel map
+      ansible.builtin.include_vars:
+        file: ../release_channel_map.yml
+
+    - name: Resolve target network
+      ansible.builtin.include_tasks: ../tasks/meraki/resolve_network.yml
+
+    - name: Resolve release policy
+      ansible.builtin.include_tasks: ../tasks/meraki/resolve_release_policy.yml
+
+    - name: Get firmware versions for target network
+      cisco.meraki.networks_firmware_upgrades_info:
+        networkId: "{{ test_network_id }}"
+      register: network_firmware_versions
+
+    - name: Filter available upgrades
+      ansible.builtin.include_tasks: ../tasks/meraki/filter_available_upgrades.yml
+
+    - name: Save discovery results to workflow state
+      ansible.builtin.include_tasks: ../tasks/workflow/save_state.yml
+      vars:
+        workflow_state_updates:
+          test_org_id: "{{ test_org_id }}"
+          test_product: "{{ test_product }}"
+          test_network_type: "{{ test_network_type }}"
+          test_network_id: "{{ test_network_id }}"
+          test_network_name: "{{ test_network_name }}"
+          test_network_tag: "{{ test_network_tag | default('') }}"
+          test_network_tags: "{{ test_network_tags | default([]) }}"
+          release_policy_source: "{{ release_policy_source }}"
+          allowed_release_types: "{{ allowed_release_types }}"
+          current_version: "{{ current_version }}"
+          current_version_id: "{{ current_version_id }}"
+          available_upgrades: "{{ available_upgrades }}"
+          target_upgrade: "{{ target_upgrade }}"
+          flags:
+            upgrade_scheduled: false
+            change_created: false
+            change_task_created: false
+            iperf_completed: false
+            iperf_posted: false
+
+    - name: Display discovery summary
+      ansible.builtin.debug:
+        msg:
+          - "workflow_run_id: {{ workflow_run_id }}"
+          - "network: {{ test_network_name }} ({{ test_network_id }})"
+          - "current: {{ current_version.shortName }} ({{ current_version.firmware }})"
+          - "target: {{ target_upgrade.shortName }} ({{ target_upgrade.firmware }})"
+          - "policy: {{ allowed_release_types }} ({{ release_policy_source }})"

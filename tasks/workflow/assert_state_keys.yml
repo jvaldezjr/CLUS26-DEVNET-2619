@@ -1,0 +1,13 @@
+---
+- name: Validate required workflow state keys are present
+  ansible.builtin.assert:
+    that:
+      - vars[item] is defined
+      - >-
+        (vars[item] is mapping and (vars[item] | length) > 0)
+        or (vars[item] is not mapping and (vars[item] | string | trim | length) > 0)
+    fail_msg: >-
+      Missing required state key '{{ item }}'.
+      Run prerequisite playbook(s) first for workflow_run_id={{ workflow_run_id }}.
+      Expected state file: {{ workflow_state_dir }}/{{ workflow_run_id }}.json
+  loop: "{{ required_state_keys }}"

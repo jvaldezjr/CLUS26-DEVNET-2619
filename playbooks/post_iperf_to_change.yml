@@ -1,0 +1,46 @@
+---
+- name: Post iperf results to ServiceNow change task
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Require workflow_run_id
+      ansible.builtin.assert:
+        that:
+          - workflow_run_id | default('') | length > 0
+        fail_msg: workflow_run_id is required
+
+    - name: Load workflow state
+      ansible.builtin.include_tasks: ../tasks/workflow/load_state.yml
+
+    - name: Skip when iperf results already posted
+      ansible.builtin.meta: end_host
+      when: flags.iperf_posted | default(false) | bool
+
+    - name: Validate iperf and change task state
+      ansible.builtin.include_tasks: ../tasks/workflow/assert_state_keys.yml
+      vars:
+        required_state_keys:
+          - snow_change_task_sys_id
+          - iperf_results
+
+    - name: Build iperf work notes body
+      ansible.builtin.set_fact:
+        snow_work_notes: |
+          Pre-upgrade iperf3 test results:
+
+          {% for test in iperf3_tests %}
+          {{ test.name }}: {{ test.client_bind }} -> {{ test.server_bind }}
+          Sent: {{ iperf_results[test.name].end.sum_sent }}
+          Received: {{ iperf_results[test.name].end.sum_received }}
+
+          {% endfor %}
+
+    - name: Update change task work notes
+      ansible.builtin.include_tasks: ../tasks/servicenow/add_work_notes.yml
+
+    - name: Save post status
+      ansible.builtin.include_tasks: ../tasks/workflow/save_state.yml
+      vars:
+        workflow_state_updates:
+          flags: "{{ (flags | default({})) | combine({'iperf_posted': true}) }}"

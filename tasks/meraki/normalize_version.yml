@@ -1,0 +1,23 @@
+---
+- name: Normalize firmware slug to semver string
+  ansible.builtin.set_fact:
+    meraki_version_normalized: >-
+      {{
+        meraki_firmware
+        | regex_search('(\\d+(?:-\\d+)*)$')
+        | default('', true)
+        | replace('-', '.')
+      }}
+  when: meraki_firmware | default('') | length > 0
+
+- name: Fallback normalize from shortName when firmware missing
+  ansible.builtin.set_fact:
+    meraki_version_normalized: >-
+      {{
+        meraki_short_name
+        | regex_replace('^[A-Za-z]+(?:\\s+[A-Za-z]+)?\\s*', '')
+        | trim
+      }}
+  when:
+    - meraki_version_normalized | default('') | length == 0
+    - meraki_short_name | default('') | length > 0

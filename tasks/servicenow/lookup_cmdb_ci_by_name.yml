@@ -1,0 +1,47 @@
+---
+- name: Skip CMDB lookup when sys_id provided via survey
+  ansible.builtin.set_fact:
+    snow_cmdb_ci_name: "{{ test_network_name }}"
+  when: snow_cmdb_ci_sys_id | default('') | length > 0
+
+- name: Query CMDB for network CI by Meraki network name
+  when: snow_cmdb_ci_sys_id | default('') | length == 0
+  block:
+    - name: Query configuration items by exact name
+      servicenow.itsm.configuration_item_info:
+        sys_class_name: "{{ snow_ci_class }}"
+        query:
+          - name: "= {{ test_network_name }}"
+        return_fields:
+          - sys_id
+          - name
+          - sys_class_name
+      register: snow_ci_query
+      environment:
+        SN_HOST: "{{ lookup('env', 'SN_HOST') }}"
+        SN_USERNAME: "{{ lookup('env', 'SN_USERNAME') }}"
+        SN_PASSWORD: "{{ lookup('env', 'SN_PASSWORD') }}"
+
+    - name: Normalize CMDB query results list
+      ansible.builtin.set_fact:
+        snow_ci_records: "{{ snow_ci_query.records | default(snow_ci_query.record | default([])) }}"
+
+    - name: Set matched CI facts when exactly one result
+      ansible.builtin.set_fact:
+        snow_cmdb_ci_sys_id: "{{ snow_ci_records[0].sys_id }}"
+        snow_cmdb_ci_name: "{{ snow_ci_records[0].name }}"
+      when: snow_ci_records | length == 1
+
+    - name: Fail when multiple CMDB matches without override
+      ansible.builtin.fail:
+        msg: >-
+          Found {{ snow_ci_records | length }} CMDB CIs named '{{ test_network_name }}'.
+          Provide snow_cmdb_ci_sys_id to disambiguate.
+      when: snow_ci_records | length > 1
+
+    - name: Fail when no CMDB match found
+      ansible.builtin.fail:
+        msg: >-
+          No CMDB CI named '{{ test_network_name }}' in class {{ snow_ci_class }}.
+          Provide snow_cmdb_ci_sys_id or align Meraki/ServiceNow naming.
+      when: snow_ci_records | length == 0

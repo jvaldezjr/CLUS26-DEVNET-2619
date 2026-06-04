@@ -1,0 +1,44 @@
+---
+- name: Normalize candidate firmware version
+  ansible.builtin.include_tasks: normalize_version.yml
+  vars:
+    meraki_firmware: "{{ meraki_candidate.firmware | default('') }}"
+    meraki_short_name: "{{ meraki_candidate.shortName | default('') }}"
+
+- name: Count same-id rejection
+  ansible.builtin.set_fact:
+    _reject_same_id: "{{ _reject_same_id | int + 1 }}"
+  when: meraki_candidate.id == current_version.id
+
+- name: Count releaseType rejection
+  ansible.builtin.set_fact:
+    _reject_release_type: "{{ _reject_release_type | int + 1 }}"
+  when:
+    - meraki_candidate.id != current_version.id
+    - meraki_candidate.releaseType not in allowed_release_types
+
+- name: Count semver rejection
+  ansible.builtin.set_fact:
+    _reject_semver: "{{ _reject_semver | int + 1 }}"
+  when:
+    - meraki_candidate.id != current_version.id
+    - meraki_candidate.releaseType in allowed_release_types
+    - meraki_version_normalized | length == 0 or not (meraki_version_normalized is version_compare(current_version.normalized, '>'))
+
+- name: Append eligible candidate
+  ansible.builtin.set_fact:
+    available_upgrades: >-
+      {{
+        available_upgrades + [{
+          'id': meraki_candidate.id,
+          'firmware': meraki_candidate.firmware | default(''),
+          'shortName': meraki_candidate.shortName | default(''),
+          'normalized': meraki_version_normalized,
+          'releaseType': meraki_candidate.releaseType | default('')
+        }]
+      }}
+  when:
+    - meraki_candidate.id != current_version.id
+    - meraki_candidate.releaseType in allowed_release_types
+    - meraki_version_normalized | length > 0
+    - meraki_version_normalized is version_compare(current_version.normalized, '>')

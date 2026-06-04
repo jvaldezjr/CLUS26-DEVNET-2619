@@ -1,0 +1,38 @@
+---
+- name: Resolve release policy from override
+  ansible.builtin.set_fact:
+    allowed_release_types: "{{ release_channel_map[release_policy_override] }}"
+    release_policy_source: survey
+  when: release_policy_override | default('') in release_channel_tags
+
+- name: Resolve release policy from test_network_tag survey value
+  ansible.builtin.set_fact:
+    allowed_release_types: "{{ release_channel_map[test_network_tag] }}"
+    release_policy_source: tag
+  when:
+    - release_policy_override | default('') not in release_channel_tags
+    - test_network_tag | default('') in release_channel_tags
+
+- name: Resolve release policy from selected network tags
+  ansible.builtin.set_fact:
+    allowed_release_types: "{{ release_channel_map[_network_channel_tag] }}"
+    release_policy_source: network_tag
+  vars:
+    _network_channel_tags: "{{ test_network_tags | intersect(release_channel_tags) }}"
+    _network_channel_tag: "{{ 'beta' if 'beta' in _network_channel_tags else ('candidate' if 'candidate' in _network_channel_tags else ('stable' if 'stable' in _network_channel_tags else '')) }}"
+  when:
+    - release_policy_override | default('') not in release_channel_tags
+    - test_network_tag | default('') not in release_channel_tags
+    - _network_channel_tag | length > 0
+
+- name: Resolve release policy from version_policies.yml
+  ansible.builtin.set_fact:
+    allowed_release_types: >-
+      {{
+        release_channel_map[version_policies[test_product][test_network_type]]
+      }}
+    release_policy_source: version_policies
+  when:
+    - release_policy_override | default('') not in release_channel_tags
+    - test_network_tag | default('') not in release_channel_tags
+    - release_policy_source is not defined

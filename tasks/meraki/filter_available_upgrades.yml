@@ -1,0 +1,56 @@
+---
+- name: Read product firmware data for target network
+  ansible.builtin.set_fact:
+    firmware_product: "{{ network_firmware_versions.meraki_response.products[test_product] }}"
+
+- name: Normalize current firmware version
+  ansible.builtin.include_tasks: normalize_version.yml
+  vars:
+    meraki_firmware: "{{ firmware_product.currentVersion.firmware | default('') }}"
+    meraki_short_name: "{{ firmware_product.currentVersion.shortName | default('') }}"
+
+- name: Store current version summary
+  ansible.builtin.set_fact:
+    current_version:
+      id: "{{ firmware_product.currentVersion.id }}"
+      firmware: "{{ firmware_product.currentVersion.firmware | default('') }}"
+      shortName: "{{ firmware_product.currentVersion.shortName | default('') }}"
+      normalized: "{{ meraki_version_normalized }}"
+      releaseType: "{{ firmware_product.currentVersion.releaseType | default('') }}"
+    current_version_id: "{{ firmware_product.currentVersion.id }}"
+
+- name: Reset eligible upgrade accumulator
+  ansible.builtin.set_fact:
+    available_upgrades: []
+    _reject_same_id: 0
+    _reject_release_type: 0
+    _reject_semver: 0
+
+- name: Evaluate firmware candidates
+  ansible.builtin.include_tasks: evaluate_candidate.yml
+  loop: "{{ firmware_product.availableVersions | default([]) }}"
+  loop_control:
+    loop_var: meraki_candidate
+    label: "{{ meraki_candidate.firmware | default(meraki_candidate.shortName) }}"
+
+- name: Fail when no eligible upgrades found
+  ansible.builtin.fail:
+    msg: >-
+      No eligible upgrades for {{ test_product }} on network {{ test_network_name }} ({{ test_network_id }}).
+      Current: {{ current_version.shortName }} ({{ current_version.firmware }}, {{ current_version.releaseType }}, normalized {{ current_version.normalized }}).
+      Policy: {{ allowed_release_types }} (source: {{ release_policy_source }}).
+      Rejected: {{ _reject_same_id }} same-id, {{ _reject_release_type }} releaseType, {{ _reject_semver }} semver.
+  when: available_upgrades | length == 0
+
+- name: Select lowest eligible upgrade as target
+  ansible.builtin.set_fact:
+    _target_upgrade_candidate: "{{ item }}"
+  loop: "{{ available_upgrades }}"
+  when: >-
+    _target_upgrade_candidate is not defined
+    or (item.normalized is version_compare(_target_upgrade_candidate.normalized, '<'))
+
+- name: Set target upgrade from lowest candidate
+  ansible.builtin.set_fact:
+    target_upgrade: "{{ _target_upgrade_candidate }}"
+

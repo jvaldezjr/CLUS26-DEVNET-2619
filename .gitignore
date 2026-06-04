@@ -2,3 +2,4 @@
 test.yml
 .lock
 .vscode/settings.json
+.workflow_state/

@@ -1,0 +1,60 @@
+---
+- name: Create ServiceNow change request and task
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Require workflow_run_id
+      ansible.builtin.assert:
+        that:
+          - workflow_run_id | default('') | length > 0
+        fail_msg: workflow_run_id is required
+
+    - name: Load workflow state
+      ansible.builtin.include_tasks: ../tasks/workflow/load_state.yml
+
+    - name: Validate required state for change creation
+      ansible.builtin.include_tasks: ../tasks/workflow/assert_state_keys.yml
+      vars:
+        required_state_keys:
+          - test_org_id
+          - test_network_name
+          - test_network_id
+          - target_upgrade
+          - current_version
+
+    - name: Set upgrade time default when not scheduled yet
+      ansible.builtin.set_fact:
+        test_upgrade_time: "{{ test_upgrade_time | default(test_upgrade_time_default) }}"
+
+    - name: Skip creation when change records already exist for this workflow run
+      ansible.builtin.debug:
+        msg: >-
+          ServiceNow records already exist for workflow {{ workflow_run_id }}:
+          {{ snow_change_number }} / {{ snow_change_task_number }}.
+          Skipping creation.
+      when:
+        - snow_change_sys_id | default('') | length > 0
+        - snow_change_task_sys_id | default('') | length > 0
+
+    - name: Create change request
+      ansible.builtin.include_tasks: ../tasks/servicenow/create_change_request.yml
+      when: snow_change_sys_id | default('') | length == 0
+
+    - name: Create change task
+      ansible.builtin.include_tasks: ../tasks/servicenow/create_change_task.yml
+      when: snow_change_task_sys_id | default('') | length == 0
+
+    - name: Save ServiceNow identifiers
+      ansible.builtin.include_tasks: ../tasks/workflow/save_state.yml
+      vars:
+        workflow_state_updates:
+          test_upgrade_time: "{{ test_upgrade_time }}"
+          snow_change_sys_id: "{{ snow_change_sys_id }}"
+          snow_change_number: "{{ snow_change_number }}"
+          snow_change_task_sys_id: "{{ snow_change_task_sys_id }}"
+          snow_change_task_number: "{{ snow_change_task_number }}"
+          flags: "{{ (flags | default({})) | combine({'change_created': true, 'change_task_created': true}) }}"
+      when: >-
+        (snow_change_sys_id | default('') | length > 0)
+        and (snow_change_task_sys_id | default('') | length > 0)

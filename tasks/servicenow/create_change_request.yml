@@ -1,0 +1,27 @@
+---
+- name: Create ServiceNow change request
+  servicenow.itsm.change_request:
+    type: "{{ snow_change_type }}"
+    state: new
+    short_description: "Meraki firmware upgrade test — {{ test_network_name }}"
+    description: |
+      Organization: {{ test_org_id }}
+      Network: {{ test_network_name }} ({{ test_network_id }})
+      Product: {{ test_product }}
+      Current: {{ current_version.shortName }} ({{ current_version.firmware }})
+      Target: {{ target_upgrade.shortName }} ({{ target_upgrade.firmware }})
+      Scheduled: {{ test_upgrade_time }}
+      Changelog: {{ matching_rss_link | default('') }}
+    impact: "{{ change_defaults.impact }}"
+    risk: "{{ change_defaults.risk }}"
+    priority: "{{ change_defaults.priority }}"
+  register: snow_change_result
+  environment:
+    SN_HOST: "{{ lookup('env', 'SN_HOST') }}"
+    SN_USERNAME: "{{ lookup('env', 'SN_USERNAME') }}"
+    SN_PASSWORD: "{{ lookup('env', 'SN_PASSWORD') }}"
+
+- name: Store change request identifiers
+  ansible.builtin.set_fact:
+    snow_change_sys_id: "{{ snow_change_result.record.sys_id }}"
+    snow_change_number: "{{ snow_change_result.record.number }}"

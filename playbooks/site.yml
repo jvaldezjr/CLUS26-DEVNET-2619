@@ -1,0 +1,8 @@
+---
+- import_playbook: discover_firmware.yml
+- import_playbook: schedule_upgrade.yml
+- import_playbook: fetch_changelog.yml
+- import_playbook: create_servicenow_change.yml
+- import_playbook: iperf_pre_upgrade.yml
+- import_playbook: post_iperf_to_change.yml
+- import_playbook: cancel_scheduled_upgrade.yml

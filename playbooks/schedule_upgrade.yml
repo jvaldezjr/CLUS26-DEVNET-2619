@@ -1,0 +1,51 @@
+---
+- name: Schedule Meraki firmware upgrade
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Require workflow_run_id
+      ansible.builtin.assert:
+        that:
+          - workflow_run_id | default('') | length > 0
+        fail_msg: workflow_run_id is required
+
+    - name: Load workflow state
+      ansible.builtin.include_tasks: ../tasks/workflow/load_state.yml
+
+    - name: Validate discovery state
+      ansible.builtin.include_tasks: ../tasks/workflow/assert_state_keys.yml
+      vars:
+        required_state_keys:
+          - test_network_id
+          - test_product
+          - target_upgrade
+
+    - name: Set upgrade schedule time
+      ansible.builtin.set_fact:
+        test_upgrade_time: "{{ test_upgrade_time | default(test_upgrade_time_default) }}"
+
+    - name: Schedule firmware upgrade
+      cisco.meraki.networks_firmware_upgrades:
+        networkId: "{{ test_network_id }}"
+        products: >-
+          {{
+            dict([
+              (test_product, {
+                'nextUpgrade': {
+                  'time': test_upgrade_time,
+                  'toVersion': {
+                    'id': target_upgrade.id
+                  }
+                }
+              })
+            ])
+          }}
+      register: schedule_result
+
+    - name: Save schedule results
+      ansible.builtin.include_tasks: ../tasks/workflow/save_state.yml
+      vars:
+        workflow_state_updates:
+          test_upgrade_time: "{{ test_upgrade_time }}"
+          flags: "{{ (flags | default({})) | combine({'upgrade_scheduled': true}) }}"

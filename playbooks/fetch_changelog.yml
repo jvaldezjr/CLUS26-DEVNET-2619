@@ -1,0 +1,74 @@
+---
+- name: Fetch Meraki firmware changelog link from RSS
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Require workflow_run_id
+      ansible.builtin.assert:
+        that:
+          - workflow_run_id | default('') | length > 0
+        fail_msg: workflow_run_id is required
+
+    - name: Load workflow state
+      ansible.builtin.include_tasks: ../tasks/workflow/load_state.yml
+
+    - name: Validate target upgrade in state
+      ansible.builtin.include_tasks: ../tasks/workflow/assert_state_keys.yml
+      vars:
+        required_state_keys:
+          - target_upgrade
+
+    - name: Download Meraki Community RSS feed
+      ansible.builtin.get_url:
+        url: "{{ meraki_rss_url }}"
+        dest: "{{ meraki_rss_dest }}"
+        mode: "0644"
+
+    - name: Parse RSS item descriptions
+      community.general.xml:
+        path: "{{ meraki_rss_dest }}"
+        xpath: "//item/description"
+        content: text
+      register: rss_descriptions
+
+    - name: Parse RSS item links
+      community.general.xml:
+        path: "{{ meraki_rss_dest }}"
+        xpath: "//item/link"
+        content: text
+      register: rss_links
+
+    - name: Build RSS items dictionary
+      ansible.builtin.set_fact:
+        rss_items_dict: >-
+          {{
+            dict(
+              rss_descriptions.matches | map(attribute='description') | list
+              | zip(rss_links.matches | map(attribute='link') | list)
+            )
+          }}
+
+    - name: Find matching RSS link for target version
+      ansible.builtin.set_fact:
+        matching_rss_link: >-
+          {{
+            (rss_items_dict | dict2items
+              | selectattr('key', 'search', target_upgrade.shortName | regex_escape)
+              | list | first).value
+            if (
+              rss_items_dict | dict2items
+              | selectattr('key', 'search', target_upgrade.shortName | regex_escape)
+              | list | length > 0
+            ) else ''
+          }}
+
+    - name: Display matching RSS link
+      ansible.builtin.debug:
+        var: matching_rss_link
+
+    - name: Save changelog link to workflow state
+      ansible.builtin.include_tasks: ../tasks/workflow/save_state.yml
+      vars:
+        workflow_state_updates:
+          matching_rss_link: "{{ matching_rss_link }}"

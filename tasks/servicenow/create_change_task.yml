@@ -1,0 +1,18 @@
+---
+- name: Create ServiceNow change task
+  servicenow.itsm.change_request_task:
+    change_request_id: "{{ snow_change_sys_id }}"
+    type: implementation
+    state: open
+    short_description: "Pre-upgrade validation — {{ test_network_name }}"
+    description: "Run iperf3 baseline and document results before firmware upgrade."
+  register: snow_change_task_result
+  environment:
+    SN_HOST: "{{ lookup('env', 'SN_HOST') }}"
+    SN_USERNAME: "{{ lookup('env', 'SN_USERNAME') }}"
+    SN_PASSWORD: "{{ lookup('env', 'SN_PASSWORD') }}"
+
+- name: Store change task identifiers
+  ansible.builtin.set_fact:
+    snow_change_task_sys_id: "{{ snow_change_task_result.record.sys_id }}"
+    snow_change_task_number: "{{ snow_change_task_result.record.number }}"

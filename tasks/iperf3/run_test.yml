@@ -1,0 +1,54 @@
+---
+- name: Ensure iperf3 is installed on client
+  ansible.builtin.package:
+    name: iperf3
+    state: present
+  delegate_to: "{{ iperf_test.client_host }}"
+
+- name: Ensure iperf3 is installed on server
+  ansible.builtin.package:
+    name: iperf3
+    state: present
+  delegate_to: "{{ iperf_test.server_host }}"
+  become: true
+
+- name: Start iperf3 server (async)
+  delegate_to: "{{ iperf_test.server_host }}"
+  become: true
+  async: 40
+  poll: 0
+  ansible.builtin.shell: >-
+    iperf3 -s -B {{ iperf_test.server_bind }} --one-off --json
+    > /tmp/iperf3_server_{{ iperf_test.name }}.json
+  changed_when: false
+
+- name: Wait for iperf3 server to be ready
+  ansible.builtin.wait_for:
+    host: "{{ iperf_test.server_bind }}"
+    port: 5201
+    timeout: 10
+  delegate_to: "{{ iperf_test.server_host }}"
+
+- name: Run iperf3 client
+  delegate_to: "{{ iperf_test.client_host }}"
+  ansible.builtin.shell: >-
+    iperf3 -c {{ iperf_test.server_bind }} -B {{ iperf_test.client_bind }}
+    -t 15 -P 8 --json
+  register: iperf3_client_result
+  changed_when: false
+
+- name: Cleanup iperf3 server after test
+  delegate_to: "{{ iperf_test.server_host }}"
+  become: true
+  ansible.builtin.shell: pkill iperf3 || true
+  changed_when: false
+
+- name: Store iperf3 result for scenario
+  ansible.builtin.set_fact:
+    iperf_results: >-
+      {{
+        (iperf_results | default({}))
+        | combine({
+            iperf_test.name: (iperf3_client_result.stdout | from_json)
+          })
+      }}

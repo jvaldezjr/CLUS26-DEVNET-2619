@@ -1,0 +1,54 @@
+---
+# Static defaults and env fallbacks only — do NOT use "{{ var | default(...) }}" for the
+# same var name here; that causes recursive template loops in group_vars.
+# Extra-vars (-e) and survey vars override these values at runtime.
+
+test_org_id: "{{ lookup('env', 'MERAKI_ORG_ID') }}"
+test_network_id: "{{ lookup('env', 'TEST_NETWORK_ID') | default('', true) }}"
+test_network_tag: "{{ lookup('env', 'TEST_NETWORK_TAG') | default('', true) }}"
+test_product: wireless
+test_network_type: production
+
+workflow_state_dir: "{{ lookup('env', 'WORKFLOW_STATE_DIR') | default('.workflow_state', true) }}"
+
+snow_ci_class: cmdb_ci_network
+snow_ci_name_field: name
+snow_change_type: normal
+snow_requested_by: "{{ lookup('env', 'SN_USERNAME') }}"
+
+run_cleanup: true
+
+change_defaults:
+  impact: low
+  risk: low
+  priority: moderate
+
+pi_interfaces:
+  pi4:
+    wired: 10.20.100.91
+    wireless: 10.20.200.240
+  pi5:
+    wired: 10.20.100.94
+    wireless: 10.20.200.142
+
+iperf3_tests:
+  - name: wired_to_wired
+    client_host: pi4
+    server_host: pi5
+    client_bind: "{{ pi_interfaces.pi4.wired }}"
+    server_bind: "{{ pi_interfaces.pi5.wired }}"
+  - name: wired_to_wireless
+    client_host: pi4
+    server_host: pi5
+    client_bind: "{{ pi_interfaces.pi4.wired }}"
+    server_bind: "{{ pi_interfaces.pi5.wireless }}"
+  - name: wireless_to_wireless
+    client_host: pi4
+    server_host: pi5
+    client_bind: "{{ pi_interfaces.pi4.wireless }}"
+    server_bind: "{{ pi_interfaces.pi5.wireless }}"
+
+meraki_rss_url: "https://community.cisco.com/kxiwq67737/rss/board?board.id=networking-firmwareupgrades"
+meraki_rss_dest: "/tmp/meraki_firmwareupgrades.xml"
+
+test_upgrade_time_default: "{{ '%Y-%m-%dT03:00:00' | strftime((now(fmt='%s') | int) + 2419200) }}"

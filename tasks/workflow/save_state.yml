@@ -1,0 +1,27 @@
+---
+- name: Build workflow state payload
+  ansible.builtin.set_fact:
+    workflow_state: >-
+      {{
+        (workflow_state | default({}))
+        | combine(workflow_state_updates | default({}))
+        | combine({
+            'workflow_run_id': workflow_run_id,
+            'updated_at': now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')
+          }, recursive=True)
+      }}
+
+- name: Set created_at on first save
+  ansible.builtin.set_fact:
+    workflow_state: "{{ workflow_state | combine({'created_at': now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')}) }}"
+  when: workflow_state.created_at is not defined
+
+- name: Write workflow state file
+  ansible.builtin.copy:
+    dest: "{{ workflow_state_dir }}/{{ workflow_run_id }}.json"
+    content: "{{ workflow_state | to_nice_json }}"
+    mode: "0600"
+
+- name: Display workflow state file path
+  ansible.builtin.debug:
+    msg: "Workflow state saved to {{ workflow_state_dir }}/{{ workflow_run_id }}.json"

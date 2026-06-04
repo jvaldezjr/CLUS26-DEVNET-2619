@@ -1,0 +1,28 @@
+---
+- name: Run pre-upgrade iperf3 tests
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Require workflow_run_id
+      ansible.builtin.assert:
+        that:
+          - workflow_run_id | default('') | length > 0
+        fail_msg: workflow_run_id is required
+
+    - name: Load workflow state
+      ansible.builtin.include_tasks: ../tasks/workflow/load_state.yml
+
+    - name: Run each iperf3 scenario
+      ansible.builtin.include_tasks: ../tasks/iperf3/run_test.yml
+      loop: "{{ iperf3_tests }}"
+      loop_control:
+        loop_var: iperf_test
+        label: "{{ iperf_test.name }}"
+
+    - name: Save iperf results
+      ansible.builtin.include_tasks: ../tasks/workflow/save_state.yml
+      vars:
+        workflow_state_updates:
+          iperf_results: "{{ iperf_results }}"
+          flags: "{{ (flags | default({})) | combine({'iperf_completed': true}) }}"

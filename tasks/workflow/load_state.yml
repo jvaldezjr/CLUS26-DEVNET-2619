@@ -1,0 +1,34 @@
+---
+- name: Set workflow state file path
+  ansible.builtin.set_fact:
+    workflow_state_file: "{{ workflow_state_dir }}/{{ workflow_run_id }}.json"
+
+- name: Check whether workflow state file exists
+  ansible.builtin.stat:
+    path: "{{ workflow_state_file }}"
+  register: workflow_state_stat
+
+- name: Load existing workflow state
+  when: workflow_state_stat.stat.exists
+  block:
+    - name: Read workflow state file
+      ansible.builtin.slurp:
+        src: "{{ workflow_state_file }}"
+      register: workflow_state_raw
+
+    - name: Parse workflow state JSON
+      ansible.builtin.set_fact:
+        workflow_state: "{{ workflow_state_raw.content | b64decode | from_json }}"
+
+- name: Initialize empty workflow state
+  ansible.builtin.set_fact:
+    workflow_state: {}
+  when: not workflow_state_stat.stat.exists
+
+- name: Merge loaded state into play variables
+  ansible.builtin.set_fact:
+    "{{ item.key }}": "{{ item.value }}"
+  loop: "{{ workflow_state | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: workflow_state | length > 0

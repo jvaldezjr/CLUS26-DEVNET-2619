@@ -1,0 +1,7 @@
+---
+release_channel_map:
+  beta: [beta, candidate, stable]
+  candidate: [candidate, stable]
+  stable: [stable]
+
+release_channel_tags: [beta, candidate, stable]
