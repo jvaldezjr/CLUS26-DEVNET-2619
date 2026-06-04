@@ -1,0 +1,4 @@
+# Optional Python deps for Ansible modules on Semaphore runners.
+# fetch_changelog uses scripts/parse_meraki_rss.py (stdlib) and does not need lxml.
+# servicenow.itsm and Meraki collection HTTP clients may need these on minimal images:
+requests>=2.28.0

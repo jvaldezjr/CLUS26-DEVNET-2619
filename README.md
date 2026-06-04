@@ -79,6 +79,7 @@ same-id duplicates, etc.).
 - Mount persistent storage at `workflow_state_dir` on the runner when chaining separate templates; a single `site.yml` run uses `playbooks/.workflow_state` by default
 - Galaxy collections install from `playbooks/collections/requirements.yml` automatically; repo root `collections/requirements.yml` is the same list for local `ansible-galaxy` runs
 - `ansible.cfg` sets Ansible temp dirs under `/tmp` so runners without a writable `/home/semaphore/.ansible` still work
+- RSS parsing uses `scripts/parse_meraki_rss.py` (stdlib `xml.etree`) — no `lxml` on the runner. Add repo `requirements.txt` to Semaphore config if other modules need extra pip packages
 
 ## Inventory
 

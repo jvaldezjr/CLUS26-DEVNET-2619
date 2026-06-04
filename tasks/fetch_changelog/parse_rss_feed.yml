@@ -1,0 +1,13 @@
+---
+- name: Parse RSS items (stdlib XML, no lxml)
+  ansible.builtin.command:
+    cmd: python3 "{{ playbook_dir }}/../scripts/parse_meraki_rss.py" "{{ meraki_rss_dest }}"
+  register: rss_parse_cmd
+  changed_when: false
+
+- name: Register RSS description and link matches
+  ansible.builtin.set_fact:
+    rss_descriptions:
+      matches: "{{ (rss_parse_cmd.stdout | from_json).descriptions }}"
+    rss_links:
+      matches: "{{ (rss_parse_cmd.stdout | from_json).links }}"

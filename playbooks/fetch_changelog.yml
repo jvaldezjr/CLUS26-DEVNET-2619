@@ -25,19 +25,8 @@
         dest: "{{ meraki_rss_dest }}"
         mode: "0644"
 
-    - name: Parse RSS item descriptions
-      community.general.xml:
-        path: "{{ meraki_rss_dest }}"
-        xpath: "//item/description"
-        content: text
-      register: rss_descriptions
-
-    - name: Parse RSS item links
-      community.general.xml:
-        path: "{{ meraki_rss_dest }}"
-        xpath: "//item/link"
-        content: text
-      register: rss_links
+    - name: Parse RSS feed
+      ansible.builtin.include_tasks: ../tasks/fetch_changelog/parse_rss_feed.yml
 
     - name: Build RSS items dictionary
       ansible.builtin.set_fact:
