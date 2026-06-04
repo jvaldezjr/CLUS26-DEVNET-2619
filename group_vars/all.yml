@@ -9,7 +9,8 @@ test_network_tag: "{{ lookup('env', 'TEST_NETWORK_TAG') | default('', true) }}"
 test_product: wireless
 test_network_type: production
 
-workflow_state_dir: "{{ lookup('env', 'WORKFLOW_STATE_DIR') | default('.workflow_state', true) }}"
+# Resolve under the playbook directory so state is consistent regardless of CWD.
+workflow_state_dir: "{{ lookup('env', 'WORKFLOW_STATE_DIR') | default(playbook_dir ~ '/.workflow_state', true) }}"
 
 snow_ci_class: cmdb_ci_network
 snow_ci_name_field: name

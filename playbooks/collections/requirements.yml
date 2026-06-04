@@ -1,0 +1,8 @@
+---
+# Semaphore looks for galaxy requirements next to the playbook path (playbooks/).
+# Keep in sync with ../collections/requirements.yml at repo root.
+collections:
+  - name: cisco.meraki
+  - name: community.general
+  - name: servicenow.itsm
+    version: ">=2.3.0"
